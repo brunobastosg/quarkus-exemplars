@@ -1,0 +1,52 @@
+version: "3.9"
+services:
+
+  db:
+    image: postgres:14
+    volumes:
+      - ./docker/postgres:/docker-entrypoint-initdb.d/
+      - db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    network_mode: host
+
+  prometheus:
+    image: prom/prometheus:v2.37.6
+    volumes:
+      - ./docker/prometheus/prometheus.yaml:/etc/prometheus/prometheus.yml
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.console.libraries=/usr/share/prometheus/console_libraries
+      - --web.console.templates=/usr/share/prometheus/consoles
+      - --enable-feature=exemplar-storage
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:9090/-/ready || exit 1
+      interval: 10s
+      retries: 5
+      timeout: 5s
+    network_mode: host
+
+  otel-collector:
+    image: otel/opentelemetry-collector:0.73.0
+    volumes:
+      - ./docker/opentelemetry-collector/config.yaml:/etc/otelcol/config.yaml
+    network_mode: host
+
+  fake-api:
+    image: mockserver/mockserver:mockserver-5.11.2
+    environment:
+      MOCKSERVER_INITIALIZATION_JSON_PATH: /config/init.json
+      MOCKSERVER_WATCH_INITIALIZATION_JSON: 'true'
+    volumes:
+      - ./docker/fake-api:/config
+    network_mode: host
+
+networks:
+  default:
+    name: quarkus-exemplars-network
+
+volumes:
+  db-data:

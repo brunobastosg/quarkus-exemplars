@@ -1,0 +1,23 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: localhost:4317
+
+exporters:
+  logging:
+    loglevel: info
+
+processors:
+  batch:
+
+extensions:
+  health_check:
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [logging]
